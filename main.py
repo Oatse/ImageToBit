@@ -1,5 +1,8 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import PRIMARY, SECONDARY, SUCCESS, INFO, WARNING, DANGER
+from tkinter.constants import LEFT, RIGHT, TOP, BOTTOM, BOTH, X, Y, YES, HORIZONTAL, VERTICAL
 from PIL import Image, ImageTk
 import pandas as pd
 import numpy as np
@@ -9,7 +12,7 @@ class ImageToRGBMatrix:
     def __init__(self, root):
         self.root = root
         self.root.title("Image to RGB Matrix Converter")
-        self.root.geometry("1400x800")
+        self.root.geometry("1400x900")
         
         # Variables
         self.image = None
@@ -18,53 +21,58 @@ class ImageToRGBMatrix:
         self.original_image = None
         self.zoom_scale = 1.0
         
-        # Create main container
-        main_container = tk.PanedWindow(root, orient=tk.HORIZONTAL)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Create main container with better styling
+        main_container = ttk.PanedWindow(root, orient=HORIZONTAL, bootstyle=INFO)
+        main_container.pack(fill=BOTH, expand=True, padx=10, pady=10)
         
         # Left panel - Image display
-        left_frame = tk.Frame(main_container, bg='white')
-        main_container.add(left_frame, width=700)
+        left_frame = ttk.Frame(main_container, padding=10)
+        main_container.add(left_frame, weight=1)
         
         # Right panel - Controls and data
-        right_frame = tk.Frame(main_container, bg='lightgray')
-        main_container.add(right_frame, width=700)
+        right_frame = ttk.Frame(main_container, padding=10)
+        main_container.add(right_frame, weight=1)
         
         self.setup_left_panel(left_frame)
         self.setup_right_panel(right_frame)
     
     def setup_left_panel(self, parent):
-        # Title
-        title_label = tk.Label(parent, text="Image Display", font=("Arial", 14, "bold"), bg='white')
-        title_label.pack(pady=10)
+        # Title with modern styling
+        title_label = ttk.Label(parent, text="📷 Image Display", 
+                               font=("Segoe UI", 16, "bold"), 
+                               bootstyle=PRIMARY)
+        title_label.pack(pady=(0, 15))
         
-        # Upload button
-        upload_btn = tk.Button(parent, text="📁 Upload Image", command=self.upload_image, 
-                               font=("Arial", 12), bg='#4CAF50', fg='white', 
-                               padx=20, pady=10, cursor='hand2')
-        upload_btn.pack(pady=5)
+        # Upload button with modern styling
+        upload_btn = ttk.Button(parent, text="📁 Upload Image", 
+                               command=self.upload_image, 
+                               bootstyle=SUCCESS,
+                               width=20)
+        upload_btn.pack(pady=10)
         
-        # Image info label
-        self.info_label = tk.Label(parent, text="No image loaded", 
-                                   font=("Arial", 10), bg='white', fg='gray')
+        # Image info label with better styling
+        self.info_label = ttk.Label(parent, text="No image loaded", 
+                                   font=("Segoe UI", 10), 
+                                   bootstyle=SECONDARY)
         self.info_label.pack(pady=5)
         
-        # Canvas frame with scrollbars
-        canvas_frame = tk.Frame(parent, bg='white')
-        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Canvas frame with modern styling
+        canvas_frame = ttk.Frame(parent, relief="solid", borderwidth=1)
+        canvas_frame.pack(fill=BOTH, expand=YES, padx=5, pady=10)
         
-        # Scrollbars
-        h_scrollbar = tk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL)
-        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        # Scrollbars with modern styling
+        h_scrollbar = ttk.Scrollbar(canvas_frame, orient=HORIZONTAL, bootstyle=INFO)
+        h_scrollbar.pack(side=BOTTOM, fill=X)
         
-        v_scrollbar = tk.Scrollbar(canvas_frame, orient=tk.VERTICAL)
-        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        v_scrollbar = ttk.Scrollbar(canvas_frame, orient=VERTICAL, bootstyle=INFO)
+        v_scrollbar.pack(side=RIGHT, fill=Y)
         
         # Canvas
-        self.canvas = tk.Canvas(canvas_frame, bg='white', 
+        self.canvas = tk.Canvas(canvas_frame, bg='#f8f9fa', 
                                 xscrollcommand=h_scrollbar.set,
-                                yscrollcommand=v_scrollbar.set)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                                yscrollcommand=v_scrollbar.set,
+                                highlightthickness=0)
+        self.canvas.pack(side=LEFT, fill=BOTH, expand=YES)
         
         h_scrollbar.config(command=self.canvas.xview)
         v_scrollbar.config(command=self.canvas.yview)
@@ -74,91 +82,110 @@ class ImageToRGBMatrix:
         self.canvas.bind("<Leave>", self.on_mouse_leave)
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         
-        # RGB info label under canvas
-        self.rgb_info_label = tk.Label(parent, text="Hover over image to see RGB values", 
-                                       font=("Arial", 11, "bold"), bg='white', fg='blue')
-        self.rgb_info_label.pack(pady=5)
+        # RGB info label under canvas with modern styling
+        self.rgb_info_label = ttk.Label(parent, 
+                                       text="Hover over image to see RGB values", 
+                                       font=("Segoe UI", 10, "bold"), 
+                                       bootstyle=INFO)
+        self.rgb_info_label.pack(pady=10)
     
     def setup_right_panel(self, parent):
-        # Title
-        title_label = tk.Label(parent, text="RGB Matrix Data", font=("Arial", 14, "bold"), 
-                               bg='lightgray')
-        title_label.pack(pady=10)
+        # Title with modern styling
+        title_label = ttk.Label(parent, text="📊 RGB Matrix Data", 
+                               font=("Segoe UI", 16, "bold"), 
+                               bootstyle=PRIMARY)
+        title_label.pack(pady=(0, 15))
         
-        # Search frame
-        search_frame = tk.LabelFrame(parent, text="Search Coordinate", 
-                                     font=("Arial", 11, "bold"), bg='lightgray', padx=10, pady=10)
-        search_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Search frame with modern styling
+        search_frame = ttk.Labelframe(parent, text="🔍 Search Coordinate", 
+                                     padding=15, bootstyle=INFO)
+        search_frame.pack(fill=X, padx=5, pady=(0, 10))
+        
+        # Coordinate input frame
+        coord_frame = ttk.Frame(search_frame)
+        coord_frame.pack(fill=X, pady=5)
         
         # X coordinate
-        x_frame = tk.Frame(search_frame, bg='lightgray')
-        x_frame.pack(fill=tk.X, pady=5)
-        tk.Label(x_frame, text="X:", font=("Arial", 10), bg='lightgray', width=5).pack(side=tk.LEFT)
-        self.x_entry = tk.Entry(x_frame, font=("Arial", 10), width=10)
-        self.x_entry.pack(side=tk.LEFT, padx=5)
+        x_frame = ttk.Frame(coord_frame)
+        x_frame.pack(side=LEFT, padx=5, expand=YES, fill=X)
+        ttk.Label(x_frame, text="X:", font=("Segoe UI", 10), width=3).pack(side=LEFT, padx=(0, 5))
+        self.x_entry = ttk.Entry(x_frame, font=("Segoe UI", 10), width=12)
+        self.x_entry.pack(side=LEFT, fill=X, expand=YES)
         
         # Y coordinate
-        y_frame = tk.Frame(search_frame, bg='lightgray')
-        y_frame.pack(fill=tk.X, pady=5)
-        tk.Label(y_frame, text="Y:", font=("Arial", 10), bg='lightgray', width=5).pack(side=tk.LEFT)
-        self.y_entry = tk.Entry(y_frame, font=("Arial", 10), width=10)
-        self.y_entry.pack(side=tk.LEFT, padx=5)
+        y_frame = ttk.Frame(coord_frame)
+        y_frame.pack(side=LEFT, padx=5, expand=YES, fill=X)
+        ttk.Label(y_frame, text="Y:", font=("Segoe UI", 10), width=3).pack(side=LEFT, padx=(0, 5))
+        self.y_entry = ttk.Entry(y_frame, font=("Segoe UI", 10), width=12)
+        self.y_entry.pack(side=LEFT, fill=X, expand=YES)
         
-        # Search button
-        search_btn = tk.Button(search_frame, text="🔍 Search", command=self.search_coordinate,
-                              font=("Arial", 10), bg='#2196F3', fg='white', cursor='hand2')
+        # Search button with modern styling
+        search_btn = ttk.Button(search_frame, text="🔍 Search", 
+                               command=self.search_coordinate,
+                               bootstyle=INFO,
+                               width=15)
         search_btn.pack(pady=10)
         
-        # Result label
-        self.search_result_label = tk.Label(search_frame, text="", 
-                                            font=("Arial", 10, "bold"), bg='lightgray', fg='green')
+        # Result label with modern styling
+        self.search_result_label = ttk.Label(search_frame, text="", 
+                                            font=("Segoe UI", 10, "bold"), 
+                                            bootstyle=SUCCESS)
         self.search_result_label.pack(pady=5)
         
-        # Separator
-        ttk.Separator(parent, orient='horizontal').pack(fill=tk.X, padx=10, pady=10)
+        # Separator with modern styling
+        ttk.Separator(parent, orient=HORIZONTAL, bootstyle=INFO).pack(fill=X, padx=5, pady=15)
         
-        # Matrix table frame
-        table_frame = tk.LabelFrame(parent, text="RGB Matrix Table", 
-                                    font=("Arial", 11, "bold"), bg='lightgray', padx=5, pady=5)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # Matrix table frame with modern styling
+        table_frame = ttk.Labelframe(parent, text="📋 RGB Matrix Table", 
+                                    padding=10, bootstyle=PRIMARY)
+        table_frame.pack(fill=BOTH, expand=YES, padx=5, pady=(0, 10))
         
-        # Table with scrollbars
-        table_scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
-        table_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        # Table with modern scrollbars
+        table_scroll_y = ttk.Scrollbar(table_frame, orient=VERTICAL, bootstyle=INFO)
+        table_scroll_y.pack(side=RIGHT, fill=Y)
         
-        table_scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
-        table_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        table_scroll_x = ttk.Scrollbar(table_frame, orient=HORIZONTAL, bootstyle=INFO)
+        table_scroll_x.pack(side=BOTTOM, fill=X)
         
-        # Treeview for table - dynamic columns will be created later
+        # Treeview for table with modern styling
         self.tree = ttk.Treeview(table_frame, 
                                  show='tree headings',
                                  yscrollcommand=table_scroll_y.set,
                                  xscrollcommand=table_scroll_x.set,
-                                 height=20)
+                                 height=20,
+                                 bootstyle=INFO)
         
         table_scroll_y.config(command=self.tree.yview)
         table_scroll_x.config(command=self.tree.xview)
         
-        self.tree.pack(fill=tk.BOTH, expand=True)
+        self.tree.pack(fill=BOTH, expand=YES)
         
-        # Export buttons
-        export_frame = tk.Frame(parent, bg='lightgray')
-        export_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Export buttons with modern styling
+        export_label = ttk.Label(parent, text="Export Options:", 
+                                font=("Segoe UI", 11, "bold"), 
+                                bootstyle=SECONDARY)
+        export_label.pack(pady=(5, 10))
         
-        export_csv_list_btn = tk.Button(export_frame, text="💾 CSV (List)", 
+        export_frame = ttk.Frame(parent)
+        export_frame.pack(fill=X, padx=5, pady=(0, 10))
+        
+        export_csv_list_btn = ttk.Button(export_frame, text="💾 CSV (List)", 
                                         command=self.export_to_csv_list,
-                                        font=("Arial", 9), bg='#FF9800', fg='white', cursor='hand2')
-        export_csv_list_btn.pack(side=tk.LEFT, padx=3)
+                                        bootstyle=WARNING,
+                                        width=15)
+        export_csv_list_btn.pack(side=LEFT, padx=5, expand=YES, fill=X)
         
-        export_csv_matrix_btn = tk.Button(export_frame, text="📋 CSV (Matrix)", 
+        export_csv_matrix_btn = ttk.Button(export_frame, text="📋 CSV (Matrix)", 
                                           command=self.export_to_csv_matrix,
-                                          font=("Arial", 9), bg='#FF5722', fg='white', cursor='hand2')
-        export_csv_matrix_btn.pack(side=tk.LEFT, padx=3)
+                                          bootstyle=DANGER,
+                                          width=15)
+        export_csv_matrix_btn.pack(side=LEFT, padx=5, expand=YES, fill=X)
         
-        export_excel_btn = tk.Button(export_frame, text="📊 Excel", 
+        export_excel_btn = ttk.Button(export_frame, text="📊 Excel", 
                                      command=self.export_to_excel,
-                                     font=("Arial", 9), bg='#4CAF50', fg='white', cursor='hand2')
-        export_excel_btn.pack(side=tk.LEFT, padx=3)
+                                     bootstyle=SUCCESS,
+                                     width=15)
+        export_excel_btn.pack(side=LEFT, padx=5, expand=YES, fill=X)
     
     def upload_image(self):
         """Upload and display image"""
@@ -241,15 +268,21 @@ class ImageToRGBMatrix:
             r, g, b = self.image_array[img_y, img_x]
             rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
             self.rgb_info_label.config(
-                text=f"Position: ({img_x}, {img_y}) | RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}",
-                fg='blue'
+                text=f"📍 Position: ({img_x}, {img_y}) | RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}",
+                bootstyle=INFO
             )
         else:
-            self.rgb_info_label.config(text="Hover over image to see RGB values", fg='gray')
+            self.rgb_info_label.config(
+                text="Hover over image to see RGB values", 
+                bootstyle=SECONDARY
+            )
     
     def on_mouse_leave(self, event):
         """Reset info label when mouse leaves canvas"""
-        self.rgb_info_label.config(text="Hover over image to see RGB values", fg='gray')
+        self.rgb_info_label.config(
+            text="Hover over image to see RGB values", 
+            bootstyle=SECONDARY
+        )
     
     def on_canvas_click(self, event):
         """Show RGB Matrix Table when image is clicked"""
@@ -337,8 +370,8 @@ class ImageToRGBMatrix:
                 rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
                 
                 self.search_result_label.config(
-                    text=f"Found: RGB({r}, {g}, {b})\nHex: {rgb_hex}",
-                    fg='green'
+                    text=f"✓ Found: RGB({r}, {g}, {b})\nHex: {rgb_hex}",
+                    bootstyle=SUCCESS
                 )
                 
                 # Highlight in table
@@ -357,8 +390,8 @@ class ImageToRGBMatrix:
                 
             else:
                 self.search_result_label.config(
-                    text=f"Coordinate out of bounds!\nImage size: {width}x{height}",
-                    fg='red'
+                    text=f"⚠ Coordinate out of bounds!\nImage size: {width}x{height}",
+                    bootstyle=DANGER
                 )
                 
         except ValueError:
@@ -466,25 +499,25 @@ class ImageToRGBMatrix:
     
     def show_rgb_matrix_window(self, center_x, center_y):
         """Show popup window with RGB matrix table around clicked position"""
-        # Create popup window
-        popup = tk.Toplevel(self.root)
-        popup.title(f"RGB Matrix Table at ({center_x}, {center_y})")
-        popup.geometry("800x600")
+        # Create popup window with modern styling
+        popup = ttk.Toplevel(self.root)
+        popup.title(f"📊 RGB Matrix Table at ({center_x}, {center_y})")
+        popup.geometry("900x650")
         
-        # Info label
+        # Info label with modern styling
         height, width, _ = self.image_array.shape
         r, g, b = self.image_array[center_y, center_x]
         rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
         
-        info_frame = tk.Frame(popup, bg='lightblue', padx=10, pady=10)
-        info_frame.pack(fill=tk.X)
+        info_frame = ttk.Frame(popup, padding=15, bootstyle=INFO)
+        info_frame.pack(fill=X, padx=10, pady=10)
         
-        info_text = (f"Clicked Position: ({center_x}, {center_y})\n"
-                    f"RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}\n"
-                    f"Showing surrounding pixels (if available)")
+        info_text = (f"📍 Clicked Position: ({center_x}, {center_y})\n"
+                    f"🎨 RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}\n"
+                    f"🔍 Showing surrounding pixels (7x7 grid)")
         
-        tk.Label(info_frame, text=info_text, font=("Arial", 11, "bold"), 
-                bg='lightblue', fg='darkblue', justify=tk.LEFT).pack()
+        ttk.Label(info_frame, text=info_text, font=("Segoe UI", 11, "bold"), 
+                 bootstyle=PRIMARY, justify=LEFT).pack()
         
         # Define matrix range (show 7x7 grid centered on clicked position)
         matrix_size = 7
@@ -495,30 +528,31 @@ class ImageToRGBMatrix:
         start_y = max(0, center_y - half_size)
         end_y = min(height, center_y + half_size + 1)
         
-        # Create frame for table
-        table_frame = tk.Frame(popup)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Create frame for table with modern styling
+        table_frame = ttk.Frame(popup)
+        table_frame.pack(fill=BOTH, expand=YES, padx=10, pady=10)
         
-        # Scrollbars
-        table_scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
-        table_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        # Scrollbars with modern styling
+        table_scroll_y = ttk.Scrollbar(table_frame, orient=VERTICAL, bootstyle=INFO)
+        table_scroll_y.pack(side=RIGHT, fill=Y)
         
-        table_scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
-        table_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        table_scroll_x = ttk.Scrollbar(table_frame, orient=HORIZONTAL, bootstyle=INFO)
+        table_scroll_x.pack(side=BOTTOM, fill=X)
         
-        # Create Treeview
+        # Create Treeview with modern styling
         columns = ["X/Y"] + [str(x) for x in range(start_x, end_x)]
         
         tree = ttk.Treeview(table_frame, 
                            show='tree headings',
                            yscrollcommand=table_scroll_y.set,
                            xscrollcommand=table_scroll_x.set,
-                           height=15)
+                           height=15,
+                           bootstyle=INFO)
         
         table_scroll_y.config(command=tree.yview)
         table_scroll_x.config(command=tree.xview)
         
-        tree.pack(fill=tk.BOTH, expand=True)
+        tree.pack(fill=BOTH, expand=YES)
         
         tree["columns"] = columns
         tree.column("#0", width=0, stretch=tk.NO)
@@ -554,9 +588,9 @@ class ImageToRGBMatrix:
         # Configure tag for clicked row
         tree.tag_configure('clicked', background='yellow')
         
-        # Export button for this matrix
-        export_btn_frame = tk.Frame(popup)
-        export_btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Export button for this matrix with modern styling
+        export_btn_frame = ttk.Frame(popup, padding=10)
+        export_btn_frame.pack(fill=X, padx=10, pady=10)
         
         def export_this_matrix():
             """Export this specific matrix region to CSV"""
@@ -585,21 +619,24 @@ class ImageToRGBMatrix:
                     df = pd.DataFrame(data, columns=headers)
                     df.to_csv(file_path, index=False)
                     
-                    messagebox.showinfo("Success", f"Matrix exported to {file_path}")
+                    messagebox.showinfo("Success", f"✓ Matrix exported to {file_path}")
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to export: {str(e)}")
+                    messagebox.showerror("Error", f"✗ Failed to export: {str(e)}")
         
-        tk.Button(export_btn_frame, text="💾 Export This Matrix to CSV", 
+        ttk.Button(export_btn_frame, text="💾 Export This Matrix to CSV", 
                  command=export_this_matrix,
-                 font=("Arial", 10), bg='#4CAF50', fg='white', cursor='hand2').pack(side=tk.LEFT, padx=5)
+                 bootstyle=SUCCESS,
+                 width=25).pack(side=LEFT, padx=5)
         
-        tk.Button(export_btn_frame, text="❌ Close", 
+        ttk.Button(export_btn_frame, text="❌ Close", 
                  command=popup.destroy,
-                 font=("Arial", 10), bg='#f44336', fg='white', cursor='hand2').pack(side=tk.RIGHT, padx=5)
+                 bootstyle=DANGER,
+                 width=12).pack(side=RIGHT, padx=5)
 
 
 def main():
-    root = tk.Tk()
+    # Create modern themed window with ttkbootstrap
+    root = ttk.Window(themename="cosmo")  # Modern, clean theme
     app = ImageToRGBMatrix(root)
     root.mainloop()
 

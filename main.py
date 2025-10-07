@@ -1,440 +1,448 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from PIL import Image, ImageTk
 import pandas as pd
 import numpy as np
-from pathlib import Path
 
 
-class ImageColorBitConverter:
+class ImageToRGBMatrix:
     def __init__(self, root):
         self.root = root
-        self.root.title("Image to Color Bit Converter")
-        self.root.geometry("1200x800")
+        self.root.title("Image to RGB Matrix Converter")
+        self.root.geometry("1400x800")
         
         # Variables
         self.image = None
         self.photo = None
-        self.image_path = None
-        self.color_data = []
-        self.canvas_image = None
-        self.markers = []
+        self.image_array = None
+        self.original_image = None
+        self.zoom_scale = 1.0
         
-        # Setup UI
-        self.setup_ui()
+        # Create main container
+        main_container = tk.PanedWindow(root, orient=tk.HORIZONTAL)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-    def setup_ui(self):
-        """Setup main UI layout"""
-        # Main container
-        main_container = ttk.Frame(self.root, padding="10")
-        main_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Left panel - Image display
+        left_frame = tk.Frame(main_container, bg='white')
+        main_container.add(left_frame, width=700)
         
-        # Configure grid weights
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        main_container.columnconfigure(0, weight=1)
-        main_container.rowconfigure(1, weight=1)
+        # Right panel - Controls and data
+        right_frame = tk.Frame(main_container, bg='lightgray')
+        main_container.add(right_frame, width=700)
         
-        # Top frame for controls
-        top_frame = ttk.Frame(main_container)
-        top_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.setup_left_panel(left_frame)
+        self.setup_right_panel(right_frame)
+    
+    def setup_left_panel(self, parent):
+        # Title
+        title_label = tk.Label(parent, text="Image Display", font=("Arial", 14, "bold"), bg='white')
+        title_label.pack(pady=10)
         
         # Upload button
-        self.upload_btn = ttk.Button(top_frame, text="📁 Upload Image", command=self.upload_image)
-        self.upload_btn.grid(row=0, column=0, padx=5)
+        upload_btn = tk.Button(parent, text="📁 Upload Image", command=self.upload_image, 
+                               font=("Arial", 12), bg='#4CAF50', fg='white', 
+                               padx=20, pady=10, cursor='hand2')
+        upload_btn.pack(pady=5)
         
-        # Export button
-        self.export_btn = ttk.Button(top_frame, text="💾 Export to CSV", command=self.export_to_csv, state=tk.DISABLED)
-        self.export_btn.grid(row=0, column=1, padx=5)
+        # Image info label
+        self.info_label = tk.Label(parent, text="No image loaded", 
+                                   font=("Arial", 10), bg='white', fg='gray')
+        self.info_label.pack(pady=5)
         
-        # Clear button
-        self.clear_btn = ttk.Button(top_frame, text="🗑️ Clear Table", command=self.clear_table, state=tk.DISABLED)
-        self.clear_btn.grid(row=0, column=2, padx=5)
+        # Canvas frame with scrollbars
+        canvas_frame = tk.Frame(parent, bg='white')
+        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Color info label
-        self.color_info_label = ttk.Label(top_frame, text="Hover over image to see color info", relief=tk.SUNKEN, width=60)
-        self.color_info_label.grid(row=0, column=3, padx=20)
+        # Scrollbars
+        h_scrollbar = tk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL)
+        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
         
-        # Color preview box
-        self.color_preview = tk.Canvas(top_frame, width=50, height=30, bg="white", relief=tk.SUNKEN, borderwidth=2)
-        self.color_preview.grid(row=0, column=4, padx=5)
+        v_scrollbar = tk.Scrollbar(canvas_frame, orient=tk.VERTICAL)
+        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Middle frame - split between image and table
-        middle_frame = ttk.Frame(main_container)
-        middle_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        middle_frame.columnconfigure(0, weight=1)
-        middle_frame.columnconfigure(1, weight=1)
-        middle_frame.rowconfigure(0, weight=1)
+        # Canvas
+        self.canvas = tk.Canvas(canvas_frame, bg='white', 
+                                xscrollcommand=h_scrollbar.set,
+                                yscrollcommand=v_scrollbar.set)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # Left side - Image canvas
-        left_frame = ttk.LabelFrame(middle_frame, text="Image Preview", padding="5")
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
-        left_frame.columnconfigure(0, weight=1)
-        left_frame.rowconfigure(0, weight=1)
+        h_scrollbar.config(command=self.canvas.xview)
+        v_scrollbar.config(command=self.canvas.yview)
         
-        # Canvas for image
-        self.canvas = tk.Canvas(left_frame, bg="gray90", cursor="crosshair")
-        self.canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # Scrollbars for canvas
-        canvas_scrollbar_y = ttk.Scrollbar(left_frame, orient=tk.VERTICAL, command=self.canvas.yview)
-        canvas_scrollbar_y.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        canvas_scrollbar_x = ttk.Scrollbar(left_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        canvas_scrollbar_x.grid(row=1, column=0, sticky=(tk.W, tk.E))
-        self.canvas.configure(yscrollcommand=canvas_scrollbar_y.set, xscrollcommand=canvas_scrollbar_x.set)
-        
-        # Right side - Table
-        right_frame = ttk.LabelFrame(middle_frame, text="Color Bit Data", padding="5")
-        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
-        right_frame.columnconfigure(0, weight=1)
-        right_frame.rowconfigure(0, weight=1)
-        
-        # Table
-        table_columns = ("No", "X", "Y", "Red", "Green", "Blue", "Red_Bin", "Green_Bin", "Blue_Bin", "Hex")
-        self.table = ttk.Treeview(right_frame, columns=table_columns, show="headings", height=20)
-        
-        # Define column headings
-        self.table.heading("No", text="No")
-        self.table.heading("X", text="X")
-        self.table.heading("Y", text="Y")
-        self.table.heading("Red", text="Red (Dec)")
-        self.table.heading("Green", text="Green (Dec)")
-        self.table.heading("Blue", text="Blue (Dec)")
-        self.table.heading("Red_Bin", text="Red (Bin)")
-        self.table.heading("Green_Bin", text="Green (Bin)")
-        self.table.heading("Blue_Bin", text="Blue (Bin)")
-        self.table.heading("Hex", text="Hex Color")
-        
-        # Define column widths
-        self.table.column("No", width=40)
-        self.table.column("X", width=50)
-        self.table.column("Y", width=50)
-        self.table.column("Red", width=70)
-        self.table.column("Green", width=70)
-        self.table.column("Blue", width=70)
-        self.table.column("Red_Bin", width=90)
-        self.table.column("Green_Bin", width=90)
-        self.table.column("Blue_Bin", width=90)
-        self.table.column("Hex", width=80)
-        
-        self.table.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # Table scrollbar
-        table_scrollbar = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=self.table.yview)
-        table_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        self.table.configure(yscrollcommand=table_scrollbar.set)
-        
-        # Status bar
-        self.status_bar = ttk.Label(main_container, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
-        
-        # Bind events
+        # Bind mouse events
         self.canvas.bind("<Motion>", self.on_mouse_move)
-        self.canvas.bind("<Button-1>", self.on_mouse_click)
+        self.canvas.bind("<Leave>", self.on_mouse_leave)
         
+        # RGB info label under canvas
+        self.rgb_info_label = tk.Label(parent, text="Hover over image to see RGB values", 
+                                       font=("Arial", 11, "bold"), bg='white', fg='blue')
+        self.rgb_info_label.pack(pady=5)
+    
+    def setup_right_panel(self, parent):
+        # Title
+        title_label = tk.Label(parent, text="RGB Matrix Data", font=("Arial", 14, "bold"), 
+                               bg='lightgray')
+        title_label.pack(pady=10)
+        
+        # Search frame
+        search_frame = tk.LabelFrame(parent, text="Search Coordinate", 
+                                     font=("Arial", 11, "bold"), bg='lightgray', padx=10, pady=10)
+        search_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # X coordinate
+        x_frame = tk.Frame(search_frame, bg='lightgray')
+        x_frame.pack(fill=tk.X, pady=5)
+        tk.Label(x_frame, text="X:", font=("Arial", 10), bg='lightgray', width=5).pack(side=tk.LEFT)
+        self.x_entry = tk.Entry(x_frame, font=("Arial", 10), width=10)
+        self.x_entry.pack(side=tk.LEFT, padx=5)
+        
+        # Y coordinate
+        y_frame = tk.Frame(search_frame, bg='lightgray')
+        y_frame.pack(fill=tk.X, pady=5)
+        tk.Label(y_frame, text="Y:", font=("Arial", 10), bg='lightgray', width=5).pack(side=tk.LEFT)
+        self.y_entry = tk.Entry(y_frame, font=("Arial", 10), width=10)
+        self.y_entry.pack(side=tk.LEFT, padx=5)
+        
+        # Search button
+        search_btn = tk.Button(search_frame, text="🔍 Search", command=self.search_coordinate,
+                              font=("Arial", 10), bg='#2196F3', fg='white', cursor='hand2')
+        search_btn.pack(pady=10)
+        
+        # Result label
+        self.search_result_label = tk.Label(search_frame, text="", 
+                                            font=("Arial", 10, "bold"), bg='lightgray', fg='green')
+        self.search_result_label.pack(pady=5)
+        
+        # Separator
+        ttk.Separator(parent, orient='horizontal').pack(fill=tk.X, padx=10, pady=10)
+        
+        # Matrix table frame
+        table_frame = tk.LabelFrame(parent, text="RGB Matrix Table", 
+                                    font=("Arial", 11, "bold"), bg='lightgray', padx=5, pady=5)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Table with scrollbars
+        table_scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
+        table_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        table_scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
+        table_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Treeview for table - dynamic columns will be created later
+        self.tree = ttk.Treeview(table_frame, 
+                                 show='tree headings',
+                                 yscrollcommand=table_scroll_y.set,
+                                 xscrollcommand=table_scroll_x.set,
+                                 height=20)
+        
+        table_scroll_y.config(command=self.tree.yview)
+        table_scroll_x.config(command=self.tree.xview)
+        
+        self.tree.pack(fill=tk.BOTH, expand=True)
+        
+        # Export buttons
+        export_frame = tk.Frame(parent, bg='lightgray')
+        export_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        export_csv_list_btn = tk.Button(export_frame, text="💾 CSV (List)", 
+                                        command=self.export_to_csv_list,
+                                        font=("Arial", 9), bg='#FF9800', fg='white', cursor='hand2')
+        export_csv_list_btn.pack(side=tk.LEFT, padx=3)
+        
+        export_csv_matrix_btn = tk.Button(export_frame, text="📋 CSV (Matrix)", 
+                                          command=self.export_to_csv_matrix,
+                                          font=("Arial", 9), bg='#FF5722', fg='white', cursor='hand2')
+        export_csv_matrix_btn.pack(side=tk.LEFT, padx=3)
+        
+        export_excel_btn = tk.Button(export_frame, text="📊 Excel", 
+                                     command=self.export_to_excel,
+                                     font=("Arial", 9), bg='#4CAF50', fg='white', cursor='hand2')
+        export_excel_btn.pack(side=tk.LEFT, padx=3)
+    
     def upload_image(self):
         """Upload and display image"""
         file_path = filedialog.askopenfilename(
-            title="Select an Image",
-            filetypes=[
-                ("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tiff"),
-                ("All files", "*.*")
-            ]
+            title="Select Image",
+            filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tiff"), 
+                      ("All files", "*.*")]
         )
         
         if file_path:
             try:
                 # Load image
-                self.image = Image.open(file_path)
-                self.image_path = file_path
+                self.original_image = Image.open(file_path)
+                self.image = self.original_image.copy()
+                
+                # Convert to RGB if needed
+                if self.image.mode != 'RGB':
+                    self.image = self.image.convert('RGB')
+                
+                # Get image array
+                self.image_array = np.array(self.image)
+                
+                # Update info
+                width, height = self.image.size
+                self.info_label.config(text=f"Size: {width}x{height} pixels")
                 
                 # Display image
                 self.display_image()
                 
-                # Auto-read all pixels from image
-                self.auto_read_all_pixels()
+                # Populate table
+                self.populate_table()
                 
-                # Update status
-                self.status_bar.config(text=f"Loaded: {Path(file_path).name} - Size: {self.image.size} - Total Pixels: {len(self.color_data)}")
-                
-                # Enable buttons
-                self.export_btn.config(state=tk.NORMAL)
-                self.clear_btn.config(state=tk.NORMAL)
+                messagebox.showinfo("Success", "Image loaded successfully!")
                 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to load image:\n{str(e)}")
+                messagebox.showerror("Error", f"Failed to load image: {str(e)}")
     
     def display_image(self):
         """Display image on canvas"""
         if self.image:
-            # Convert to PhotoImage
-            self.photo = ImageTk.PhotoImage(self.image)
+            # Resize for display if too large
+            display_image = self.image.copy()
+            width, height = display_image.size
             
-            # Clear canvas
+            # Limit size for display
+            max_size = 600
+            if width > max_size or height > max_size:
+                ratio = min(max_size/width, max_size/height)
+                new_width = int(width * ratio)
+                new_height = int(height * ratio)
+                display_image = display_image.resize((new_width, new_height), Image.LANCZOS)
+            
+            self.photo = ImageTk.PhotoImage(display_image)
+            self.canvas.config(scrollregion=(0, 0, display_image.width, display_image.height))
             self.canvas.delete("all")
-            self.markers = []
-            
-            # Display image
-            self.canvas_image = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-            
-            # Configure canvas scroll region
-            self.canvas.configure(scrollregion=self.canvas.bbox(tk.ALL))
-    
-    def auto_read_all_pixels(self):
-        """Automatically read all pixels from the image and save to table"""
-        if not self.image:
-            return
-        
-        # Clear existing data
-        self.color_data = []
-        
-        # Show progress dialog
-        self.status_bar.config(text="Reading all pixels... Please wait...")
-        self.root.update()
-        
-        width, height = self.image.size
-        total_pixels = width * height
-        
-        # Warning for very large images
-        if total_pixels > 1000000:  # More than 1 million pixels
-            result = messagebox.askyesno(
-                "Large Image Warning",
-                f"This image has {total_pixels:,} pixels.\n"
-                f"Reading all pixels may take some time and use significant memory.\n\n"
-                f"Do you want to continue?"
-            )
-            if not result:
-                self.status_bar.config(text="Operation cancelled by user")
-                return
-        
-        # Read all pixels
-        try:
-            for y in range(height):
-                for x in range(width):
-                    # Get pixel color
-                    pixel = self.image.getpixel((x, y))
-                    
-                    # Handle different image modes
-                    if self.image.mode == 'RGB':
-                        r, g, b = pixel
-                    elif self.image.mode == 'RGBA':
-                        r, g, b, a = pixel
-                    elif self.image.mode == 'L':  # Grayscale
-                        r = g = b = pixel
-                    else:
-                        continue
-                    
-                    # Convert to binary
-                    r_bin = format(r, '08b')
-                    g_bin = format(g, '08b')
-                    b_bin = format(b, '08b')
-                    hex_color = f"#{r:02X}{g:02X}{b:02X}"
-                    
-                    # Add to data
-                    self.color_data.append({
-                        'X': x,
-                        'Y': y,
-                        'Red_Dec': r,
-                        'Green_Dec': g,
-                        'Blue_Dec': b,
-                        'Red_Bin': r_bin,
-                        'Green_Bin': g_bin,
-                        'Blue_Bin': b_bin,
-                        'Hex_Color': hex_color
-                    })
-                
-                # Update progress every 10 rows
-                if y % 10 == 0:
-                    progress = (y / height) * 100
-                    self.status_bar.config(text=f"Reading pixels... {progress:.1f}% ({y}/{height} rows)")
-                    self.root.update()
-            
-            # Update table
-            self.update_table()
-            
-            # Update status
-            self.status_bar.config(text=f"Successfully read {len(self.color_data):,} pixels from image")
-            messagebox.showinfo("Success", f"Successfully read {len(self.color_data):,} pixels!\n\nData is ready to export.")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to read pixels:\n{str(e)}")
-            self.status_bar.config(text="Error reading pixels")
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
     
     def on_mouse_move(self, event):
-        """Handle mouse movement over canvas"""
-        if self.image and self.canvas_image:
-            # Get canvas coordinates
-            canvas_x = self.canvas.canvasx(event.x)
-            canvas_y = self.canvas.canvasy(event.y)
-            
-            # Convert to image coordinates
-            x = int(canvas_x)
-            y = int(canvas_y)
-            
-            # Check if coordinates are within image bounds
-            if 0 <= x < self.image.width and 0 <= y < self.image.height:
-                # Get pixel color
-                pixel = self.image.getpixel((x, y))
-                
-                # Handle different image modes
-                if self.image.mode == 'RGB':
-                    r, g, b = pixel
-                elif self.image.mode == 'RGBA':
-                    r, g, b, a = pixel
-                elif self.image.mode == 'L':  # Grayscale
-                    r = g = b = pixel
-                else:
-                    return
-                
-                # Convert to binary
-                r_bin = format(r, '08b')
-                g_bin = format(g, '08b')
-                b_bin = format(b, '08b')
-                hex_color = f"#{r:02X}{g:02X}{b:02X}"
-                
-                # Update color info label
-                info_text = f"X:{x} Y:{y} | RGB:({r},{g},{b}) | Bin: R:{r_bin} G:{g_bin} B:{b_bin} | {hex_color}"
-                self.color_info_label.config(text=info_text)
-                
-                # Update color preview
-                self.color_preview.config(bg=hex_color)
-    
-    def on_mouse_click(self, event):
-        """Handle mouse click to save color data"""
-        if self.image and self.canvas_image:
-            # Get canvas coordinates
-            canvas_x = self.canvas.canvasx(event.x)
-            canvas_y = self.canvas.canvasy(event.y)
-            
-            # Convert to image coordinates
-            x = int(canvas_x)
-            y = int(canvas_y)
-            
-            # Check if coordinates are within image bounds
-            if 0 <= x < self.image.width and 0 <= y < self.image.height:
-                # Get pixel color
-                pixel = self.image.getpixel((x, y))
-                
-                # Handle different image modes
-                if self.image.mode == 'RGB':
-                    r, g, b = pixel
-                elif self.image.mode == 'RGBA':
-                    r, g, b, a = pixel
-                elif self.image.mode == 'L':  # Grayscale
-                    r = g = b = pixel
-                else:
-                    return
-                
-                # Convert to binary
-                r_bin = format(r, '08b')
-                g_bin = format(g, '08b')
-                b_bin = format(b, '08b')
-                hex_color = f"#{r:02X}{g:02X}{b:02X}"
-                
-                # Add to data
-                self.color_data.append({
-                    'X': x,
-                    'Y': y,
-                    'Red_Dec': r,
-                    'Green_Dec': g,
-                    'Blue_Dec': b,
-                    'Red_Bin': r_bin,
-                    'Green_Bin': g_bin,
-                    'Blue_Bin': b_bin,
-                    'Hex_Color': hex_color
-                })
-                
-                # Update table
-                self.update_table()
-                
-                # Draw marker on canvas
-                marker = self.canvas.create_oval(
-                    canvas_x - 3, canvas_y - 3,
-                    canvas_x + 3, canvas_y + 3,
-                    fill=hex_color, outline="black", width=2
-                )
-                self.markers.append(marker)
-                
-                # Update status
-                self.status_bar.config(text=f"Saved color at ({x}, {y}) - Total: {len(self.color_data)} points")
-    
-    def update_table(self):
-        """Update table with color data"""
-        # Clear table
-        for item in self.table.get_children():
-            self.table.delete(item)
-        
-        # Add data to table
-        for idx, data in enumerate(self.color_data, 1):
-            self.table.insert("", tk.END, values=(
-                idx,
-                data['X'],
-                data['Y'],
-                data['Red_Dec'],
-                data['Green_Dec'],
-                data['Blue_Dec'],
-                data['Red_Bin'],
-                data['Green_Bin'],
-                data['Blue_Bin'],
-                data['Hex_Color']
-            ))
-    
-    def export_to_csv(self):
-        """Export table data to CSV"""
-        if not self.color_data:
-            messagebox.showwarning("Warning", "No data to export!")
+        """Show RGB values on mouse hover"""
+        if self.image_array is None:
             return
         
-        # Ask for save location
+        # Get canvas coordinates
+        canvas_x = self.canvas.canvasx(event.x)
+        canvas_y = self.canvas.canvasy(event.y)
+        
+        # Convert to image coordinates
+        width, height = self.image.size
+        display_width = self.photo.width() if self.photo else width
+        display_height = self.photo.height() if self.photo else height
+        
+        scale_x = width / display_width
+        scale_y = height / display_height
+        
+        img_x = int(canvas_x * scale_x)
+        img_y = int(canvas_y * scale_y)
+        
+        # Check bounds
+        if 0 <= img_x < width and 0 <= img_y < height:
+            r, g, b = self.image_array[img_y, img_x]
+            rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
+            self.rgb_info_label.config(
+                text=f"Position: ({img_x}, {img_y}) | RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}",
+                fg='blue'
+            )
+        else:
+            self.rgb_info_label.config(text="Hover over image to see RGB values", fg='gray')
+    
+    def on_mouse_leave(self, event):
+        """Reset info label when mouse leaves canvas"""
+        self.rgb_info_label.config(text="Hover over image to see RGB values", fg='gray')
+    
+    def populate_table(self):
+        """Populate table with RGB matrix data in X/Y format"""
+        # Clear existing data
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        if self.image_array is None:
+            return
+        
+        height, width, _ = self.image_array.shape
+        
+        # No limit - display all coordinates
+        # Create columns: X/Y header + X coordinates
+        columns = ["X/Y"] + [str(x) for x in range(width)]
+        
+        self.tree["columns"] = columns
+        self.tree.column("#0", width=0, stretch=tk.NO)  # Hide tree column
+        
+        # Configure column headers
+        self.tree.heading("X/Y", text="X/Y")
+        self.tree.column("X/Y", width=60, anchor='center')
+        
+        for col in columns[1:]:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=120, anchor='center')
+        
+        # Show loading message for large images
+        if width * height > 10000:
+            self.info_label.config(text=f"Loading table: {width}x{height} pixels... Please wait...")
+            self.root.update()
+        
+        # Populate rows (Y coordinates)
+        for y in range(height):
+            row_values = [str(y)]  # Y coordinate as first column
+            
+            for x in range(width):
+                r, g, b = self.image_array[y, x]
+                rgb_str = f"({r},{g},{b})"
+                row_values.append(rgb_str)
+            
+            self.tree.insert("", tk.END, values=row_values)
+        
+        # Update info label
+        self.info_label.config(text=f"Size: {width}x{height} pixels | Table: {width} cols x {height} rows")
+    
+    def search_coordinate(self):
+        """Search for specific coordinate and show RGB values"""
+        try:
+            x = int(self.x_entry.get())
+            y = int(self.y_entry.get())
+            
+            if self.image_array is None:
+                messagebox.showwarning("Warning", "Please load an image first!")
+                return
+            
+            height, width, _ = self.image_array.shape
+            
+            if 0 <= x < width and 0 <= y < height:
+                r, g, b = self.image_array[y, x]
+                rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
+                
+                self.search_result_label.config(
+                    text=f"Found: RGB({r}, {g}, {b})\nHex: {rgb_hex}",
+                    fg='green'
+                )
+                
+                # Highlight in table
+                try:
+                    # Find the row with this Y value
+                    children = self.tree.get_children()
+                    if y < len(children):
+                        item = children[y]
+                        self.tree.selection_set(item)
+                        self.tree.see(item)
+                        
+                        # Scroll horizontally to show the X column
+                        self.tree.xview_moveto(x / width if width > 0 else 0)
+                except Exception as e:
+                    pass  # Could not highlight in table
+                
+            else:
+                self.search_result_label.config(
+                    text=f"Coordinate out of bounds!\nImage size: {width}x{height}",
+                    fg='red'
+                )
+                
+        except ValueError:
+            messagebox.showerror("Error", "Please enter valid integer coordinates!")
+    
+    def export_to_csv_list(self):
+        """Export RGB matrix to CSV in list format (X, Y, R, G, B, RGB_Hex)"""
+        if self.image_array is None:
+            messagebox.showwarning("Warning", "Please load an image first!")
+            return
+        
         file_path = filedialog.asksaveasfilename(
-            title="Save CSV File",
             defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Export to CSV (List Format)"
         )
         
         if file_path:
             try:
-                # Create DataFrame
-                df = pd.DataFrame(self.color_data)
+                height, width, _ = self.image_array.shape
+                data = []
                 
-                # Reorder columns
-                df = df[['X', 'Y', 'Red_Dec', 'Green_Dec', 'Blue_Dec', 
-                        'Red_Bin', 'Green_Bin', 'Blue_Bin', 'Hex_Color']]
+                for y in range(height):
+                    for x in range(width):
+                        r, g, b = self.image_array[y, x]
+                        rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
+                        data.append([x, y, r, g, b, rgb_hex])
                 
-                # Export to CSV
+                df = pd.DataFrame(data, columns=["X", "Y", "R", "G", "B", "RGB_Hex"])
                 df.to_csv(file_path, index=False)
                 
-                messagebox.showinfo("Success", f"Data exported successfully to:\n{file_path}")
-                self.status_bar.config(text=f"Exported {len(self.color_data)} rows to CSV")
-                
+                messagebox.showinfo("Success", f"Data exported to {file_path}\nFormat: List (X, Y, R, G, B, RGB_Hex)")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to export CSV:\n{str(e)}")
+                messagebox.showerror("Error", f"Failed to export: {str(e)}")
     
-    def clear_table(self):
-        """Clear all data from table"""
-        if self.color_data:
-            result = messagebox.askyesno("Confirm", "Are you sure you want to clear all data?")
-            if result:
-                # Clear data
-                self.color_data = []
+    def export_to_csv_matrix(self):
+        """Export RGB matrix to CSV in matrix format (X/Y grid with RGB tuples)"""
+        if self.image_array is None:
+            messagebox.showwarning("Warning", "Please load an image first!")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Export to CSV (Matrix Format)"
+        )
+        
+        if file_path:
+            try:
+                height, width, _ = self.image_array.shape
                 
-                # Clear table
-                for item in self.table.get_children():
-                    self.table.delete(item)
+                # Create matrix data
+                # First row: headers (X/Y, 0, 1, 2, ...)
+                headers = ["X/Y"] + [str(x) for x in range(width)]
                 
-                # Clear markers
-                for marker in self.markers:
-                    self.canvas.delete(marker)
-                self.markers = []
+                # Data rows: Y coordinate + RGB tuples for each X
+                data = []
+                for y in range(height):
+                    row = [str(y)]  # Y coordinate as first column
+                    for x in range(width):
+                        r, g, b = self.image_array[y, x]
+                        rgb_str = f"({r},{g},{b})"
+                        row.append(rgb_str)
+                    data.append(row)
                 
-                # Update status
-                self.status_bar.config(text="Table cleared")
-                messagebox.showinfo("Success", "Table cleared successfully")
+                # Create DataFrame and export
+                df = pd.DataFrame(data, columns=headers)
+                df.to_csv(file_path, index=False)
+                
+                messagebox.showinfo("Success", 
+                                  f"Data exported to {file_path}\n"
+                                  f"Format: Matrix ({width} columns x {height} rows)\n"
+                                  f"Cell format: (R,G,B)")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to export: {str(e)}")
+    
+    def export_to_excel(self):
+        """Export RGB matrix to Excel"""
+        if self.image_array is None:
+            messagebox.showwarning("Warning", "Please load an image first!")
+            return
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
+        )
+        
+        if file_path:
+            try:
+                height, width, _ = self.image_array.shape
+                data = []
+                
+                for y in range(height):
+                    for x in range(width):
+                        r, g, b = self.image_array[y, x]
+                        rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
+                        data.append([x, y, r, g, b, rgb_hex])
+                
+                df = pd.DataFrame(data, columns=["X", "Y", "R", "G", "B", "RGB_Hex"])
+                df.to_excel(file_path, index=False, engine='openpyxl')
+                
+                messagebox.showinfo("Success", f"Data exported to {file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to export: {str(e)}")
 
 
 def main():
     root = tk.Tk()
-    app = ImageColorBitConverter(root)
+    app = ImageToRGBMatrix(root)
     root.mainloop()
 
 

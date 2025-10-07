@@ -8,6 +8,8 @@ Program untuk mengkonversi gambar menjadi tabel koordinat matriks RGB dengan fit
 
 ✅ **Hover RGB Display** - Hover mouse di atas gambar untuk melihat nilai RGB pada koordinat tersebut
 
+✅ **Click RGB Matrix** - 🆕 Klik pada gambar untuk melihat matrix RGB 7x7 di sekitar posisi klik dengan popup window
+
 ✅ **Search Coordinate** - Cari koordinat spesifik (x, y) untuk melihat nilai RGB-nya
 
 ✅ **RGB Matrix Table** - Tampilan tabel lengkap dengan koordinat x/y dan nilai RGB
@@ -38,20 +40,27 @@ python main.py
    - Nilai RGB pada posisi cursor akan ditampilkan di bawah gambar
    - Format: Position: (x, y) | RGB: (r, g, b) | Hex: #RRGGBB
 
-4. **Search Koordinat**:
+4. **Klik untuk Melihat RGB Matrix**:
+   - **FITUR BARU!** Klik pada gambar untuk melihat matrix RGB di sekitar posisi yang diklik
+   - Window popup akan muncul menampilkan tabel 7x7 pixel di sekitar posisi klik
+   - Pixel yang diklik akan ditandai dengan bintang (★) dan highlight kuning
+   - Tabel menampilkan koordinat dan nilai RGB untuk setiap pixel
+   - Bisa export matrix tersebut ke CSV secara terpisah
+
+5. **Search Koordinat**:
    - Masukkan nilai X dan Y di panel kanan
    - Klik tombol "🔍 Search"
    - Nilai RGB untuk koordinat tersebut akan ditampilkan
    - Koordinat akan di-highlight di tabel (jika ada)
 
-5. **Lihat Tabel RGB Matrix**:
+6. **Lihat Tabel RGB Matrix**:
    - Tabel di panel kanan menampilkan **SEMUA koordinat** sesuai ukuran gambar
    - Format matrix: X/Y grid dengan RGB tuples
    - **No limit** - gambar 500x300 = tabel 500 kolom x 300 baris
    - Scroll horizontal dan vertikal untuk navigasi
    - Search auto-scroll ke koordinat yang dicari
 
-6. **Export Data**:
+7. **Export Data**:
    - Klik "💾 CSV (List)" untuk export format list dengan kolom X, Y, R, G, B, RGB_Hex
    - Klik "📋 CSV (Matrix)" untuk export format matrix seperti tampilan tabel
    - Klik "📊 Excel" untuk export ke Excel format

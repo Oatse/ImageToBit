@@ -72,6 +72,7 @@ class ImageToRGBMatrix:
         # Bind mouse events
         self.canvas.bind("<Motion>", self.on_mouse_move)
         self.canvas.bind("<Leave>", self.on_mouse_leave)
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
         
         # RGB info label under canvas
         self.rgb_info_label = tk.Label(parent, text="Hover over image to see RGB values", 
@@ -249,6 +250,30 @@ class ImageToRGBMatrix:
     def on_mouse_leave(self, event):
         """Reset info label when mouse leaves canvas"""
         self.rgb_info_label.config(text="Hover over image to see RGB values", fg='gray')
+    
+    def on_canvas_click(self, event):
+        """Show RGB Matrix Table when image is clicked"""
+        if self.image_array is None:
+            return
+        
+        # Get canvas coordinates
+        canvas_x = self.canvas.canvasx(event.x)
+        canvas_y = self.canvas.canvasy(event.y)
+        
+        # Convert to image coordinates
+        width, height = self.image.size
+        display_width = self.photo.width() if self.photo else width
+        display_height = self.photo.height() if self.photo else height
+        
+        scale_x = width / display_width
+        scale_y = height / display_height
+        
+        img_x = int(canvas_x * scale_x)
+        img_y = int(canvas_y * scale_y)
+        
+        # Check bounds
+        if 0 <= img_x < width and 0 <= img_y < height:
+            self.show_rgb_matrix_window(img_x, img_y)
     
     def populate_table(self):
         """Populate table with RGB matrix data in X/Y format"""
@@ -438,6 +463,139 @@ class ImageToRGBMatrix:
                 messagebox.showinfo("Success", f"Data exported to {file_path}")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to export: {str(e)}")
+    
+    def show_rgb_matrix_window(self, center_x, center_y):
+        """Show popup window with RGB matrix table around clicked position"""
+        # Create popup window
+        popup = tk.Toplevel(self.root)
+        popup.title(f"RGB Matrix Table at ({center_x}, {center_y})")
+        popup.geometry("800x600")
+        
+        # Info label
+        height, width, _ = self.image_array.shape
+        r, g, b = self.image_array[center_y, center_x]
+        rgb_hex = f"#{r:02X}{g:02X}{b:02X}"
+        
+        info_frame = tk.Frame(popup, bg='lightblue', padx=10, pady=10)
+        info_frame.pack(fill=tk.X)
+        
+        info_text = (f"Clicked Position: ({center_x}, {center_y})\n"
+                    f"RGB: ({r}, {g}, {b}) | Hex: {rgb_hex}\n"
+                    f"Showing surrounding pixels (if available)")
+        
+        tk.Label(info_frame, text=info_text, font=("Arial", 11, "bold"), 
+                bg='lightblue', fg='darkblue', justify=tk.LEFT).pack()
+        
+        # Define matrix range (show 7x7 grid centered on clicked position)
+        matrix_size = 7
+        half_size = matrix_size // 2
+        
+        start_x = max(0, center_x - half_size)
+        end_x = min(width, center_x + half_size + 1)
+        start_y = max(0, center_y - half_size)
+        end_y = min(height, center_y + half_size + 1)
+        
+        # Create frame for table
+        table_frame = tk.Frame(popup)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Scrollbars
+        table_scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
+        table_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        table_scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
+        table_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Create Treeview
+        columns = ["X/Y"] + [str(x) for x in range(start_x, end_x)]
+        
+        tree = ttk.Treeview(table_frame, 
+                           show='tree headings',
+                           yscrollcommand=table_scroll_y.set,
+                           xscrollcommand=table_scroll_x.set,
+                           height=15)
+        
+        table_scroll_y.config(command=tree.yview)
+        table_scroll_x.config(command=tree.xview)
+        
+        tree.pack(fill=tk.BOTH, expand=True)
+        
+        tree["columns"] = columns
+        tree.column("#0", width=0, stretch=tk.NO)
+        
+        # Configure headers
+        tree.heading("X/Y", text="X/Y")
+        tree.column("X/Y", width=60, anchor='center')
+        
+        for col in columns[1:]:
+            tree.heading(col, text=col)
+            tree.column(col, width=120, anchor='center')
+        
+        # Populate table
+        for y in range(start_y, end_y):
+            row_values = [str(y)]
+            
+            for x in range(start_x, end_x):
+                r, g, b = self.image_array[y, x]
+                rgb_str = f"({r},{g},{b})"
+                
+                # Highlight the clicked pixel
+                if x == center_x and y == center_y:
+                    rgb_str = f"★ {rgb_str} ★"
+                
+                row_values.append(rgb_str)
+            
+            # Insert row with tag for clicked position
+            if y == center_y:
+                tree.insert("", tk.END, values=row_values, tags=('clicked',))
+            else:
+                tree.insert("", tk.END, values=row_values)
+        
+        # Configure tag for clicked row
+        tree.tag_configure('clicked', background='yellow')
+        
+        # Export button for this matrix
+        export_btn_frame = tk.Frame(popup)
+        export_btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        def export_this_matrix():
+            """Export this specific matrix region to CSV"""
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                title=f"Export Matrix at ({center_x}, {center_y})"
+            )
+            
+            if file_path:
+                try:
+                    # Create matrix data
+                    headers = ["X/Y"] + [str(x) for x in range(start_x, end_x)]
+                    data = []
+                    
+                    for y in range(start_y, end_y):
+                        row = [str(y)]
+                        for x in range(start_x, end_x):
+                            r, g, b = self.image_array[y, x]
+                            rgb_str = f"({r},{g},{b})"
+                            if x == center_x and y == center_y:
+                                rgb_str = f"[CLICKED] {rgb_str}"
+                            row.append(rgb_str)
+                        data.append(row)
+                    
+                    df = pd.DataFrame(data, columns=headers)
+                    df.to_csv(file_path, index=False)
+                    
+                    messagebox.showinfo("Success", f"Matrix exported to {file_path}")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to export: {str(e)}")
+        
+        tk.Button(export_btn_frame, text="💾 Export This Matrix to CSV", 
+                 command=export_this_matrix,
+                 font=("Arial", 10), bg='#4CAF50', fg='white', cursor='hand2').pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(export_btn_frame, text="❌ Close", 
+                 command=popup.destroy,
+                 font=("Arial", 10), bg='#f44336', fg='white', cursor='hand2').pack(side=tk.RIGHT, padx=5)
 
 
 def main():

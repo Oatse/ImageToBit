@@ -1,5 +1,37 @@
 # Image to Color Bit Converter - CHANGELOG
 
+## Version 1.2.0 (October 2025)
+
+### ✨ New Feature: Click to View RGB Matrix
+
+#### Interactive Matrix Viewer
+- 🆕 **CLICK ON IMAGE** - Klik pada gambar untuk melihat RGB matrix di sekitar posisi klik!
+- ✅ Popup window dengan matrix 7x7 pixel
+- ✅ Highlight pixel yang diklik dengan bintang (★) dan background kuning
+- ✅ Info detail: koordinat, RGB value, dan Hex color
+- ✅ Export matrix lokal ke CSV
+- ✅ Dynamic matrix size (adapts di edge/corner)
+- ✅ Multiple popup support
+- ✅ Clean UI dengan scroll support
+
+#### How It Works
+1. Upload image
+2. Klik posisi mana pun pada gambar
+3. Popup window muncul dengan matrix 7x7 di sekitar klik
+4. Pixel yang diklik ditandai jelas
+5. Bisa export matrix tersebut ke CSV
+
+#### Documentation
+- 📖 Added `docs/CLICK_FEATURE_GUIDE.md` - Panduan lengkap fitur klik
+- 📖 Updated `README.md` dengan informasi fitur baru
+
+#### Technical Details
+- Canvas click event binding: `<Button-1>`
+- Matrix calculation with boundary handling
+- Coordinate transformation from canvas to image space
+- Treeview dengan tag untuk highlight
+- Toplevel window untuk popup
+
 ## Version 1.1.0 (October 2025)
 
 ### ✨ New Feature: Auto-Read All Pixels
